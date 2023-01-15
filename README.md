@@ -52,10 +52,10 @@ load and get _events_ as a pandas _DataFrame_
 
 ```
 import pandas as pd
-from nthours import nowthen as nt
+from tghours import hours
 
-nt.load()
-events = nt.db.get_table('event')
+hours.load()
+events = hours.db.get_table('event')
 ```
 
 ## sample config files
