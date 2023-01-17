@@ -253,6 +253,7 @@ def std_events_from_entries(entries, projects, clients):
         if x['tags'] else x['description'], axis=1)
 
     # 03 convert start time from utc string to sgp timestamp
+    std = std[~pd.isnull(std['stop'])] # only events that are not still currently in progress
     std['timestamp'] = std['start'].apply(lambda x: utc_str_to_local_datetime(x, 'start'))
     std['start_date'] = std['timestamp'].apply(lambda x: x.date())
     std['stop_date'] = std['stop'].apply(lambda x: utc_str_to_local_datetime(x, 'stop').date())
