@@ -129,6 +129,7 @@ def load_events():
 def events_std_format(data, filename='', report_date=None):
     ''' create events from Toggl data table
     '''
+    events = []
     try:
         #01 convert the dates and create activity label
         if not report_date:
@@ -137,10 +138,11 @@ def events_std_format(data, filename='', report_date=None):
         # std = toggl.standard_form(data)  # deprecated
         # std = nt_standardForm(data)      # deprecated, NowThen method
 
-        #02 add year, month, week
-        events = TimeSeriesTable(std, dtField='timestamp').ts
+        if len(std) > 0:
+            #02 add year, month, week
+            events = TimeSeriesTable(std, dtField='timestamp').ts
 
     except:
-        events = None
+        pass
 
     return events
