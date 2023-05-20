@@ -130,22 +130,22 @@ def events_std_format(data, filename='', report_date=None, window_days=None):
     ''' create events from Toggl data table
     '''
     events = []
-    #try:
-    #01 convert the dates and create activity label
-    if not report_date:
-        report_date = dt.datetime.today().strftime(toggl.TOGGL_DATE_FORMAT)
-    if window_days:
-        std = toggl.std_events_from_api(report_date, window_days=window_days)
-    else:
-        std = toggl.std_events_from_api(report_date)
-    # std = toggl.standard_form(data)  # deprecated
-    # std = nt_standardForm(data)      # deprecated, NowThen method
+    try:
+        #01 convert the dates and create activity label
+        if not report_date:
+            report_date = dt.datetime.today().strftime(toggl.TOGGL_DATE_FORMAT)
+        if window_days:
+            std = toggl.std_events_from_api(report_date, window_days=window_days)
+        else:
+            std = toggl.std_events_from_api(report_date)
+        # std = toggl.standard_form(data)  # deprecated
+        # std = nt_standardForm(data)      # deprecated, NowThen method
 
-    if len(std) > 0:
-        #02 add year, month, week
-        events = TimeSeriesTable(std, dtField='timestamp').ts
+        if len(std) > 0:
+            #02 add year, month, week
+            events = TimeSeriesTable(std, dtField='timestamp').ts
 
-    #except:
-    #    pass
+    except:
+        pass
 
     return events
