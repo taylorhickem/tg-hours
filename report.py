@@ -20,11 +20,11 @@ from tghours import hours
 # -----------------------------------------------------
 
 
-def update_events():
+def update_events(report_date, window_days=None):
     '''Update events database sqlite and gsheet with new NowThen records
     '''
     hours.load()
-    hours.update_events()
+    hours.update_events(report_date, window_days)
 
 def update_activity_report():
     pass
@@ -45,7 +45,15 @@ def autorun():
     if len(sys.argv) > 1:
         process_name = sys.argv[1]
         if process_name == 'update_events':
-            update_events()
+            if len(sys.argv) > 2:
+                report_date = sys.argv[2]
+                if len(sys.argv) > 3:
+                    window_days = int(sys.argv[3])
+                    update_events(report_date, window_days)
+                else:
+                    update_events(report_date)
+            else:
+                update_events(None)
         elif process_name == 'update_activity_report':
             update_activity_report()
     else:

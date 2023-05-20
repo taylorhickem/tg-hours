@@ -43,6 +43,7 @@ def standard_form(data):
     std['Client'].fillna('', inplace=True)
     std['Project'].fillna('', inplace=True)
     std['activity'] = std.apply(lambda x: x['Client'] + ACTIVITY_DELIM + x['Project'], axis=1)
+    std['activity'].fillna('', inplace=True)
 
     # 2. Add the `Tags` as a hyphen delimited prefix to the description `comment` = `Tag` - `Description`
     std['Tags'].fillna('', inplace=True)
@@ -184,10 +185,7 @@ class TogglAPI(object):
         return entries
 
     def workspace_projects(self):
-        route_generic = '/workspaces/{workspace_id}/projects'
-        route = route_generic.format(
-            workspace_id=self.auth['default_workspace_id']
-        )
+        route = '/me/projects'
         projects, status_code = self.get(route)
         return projects
 
@@ -212,10 +210,10 @@ def api_logout():
         api = None
 
 
-def std_events_from_api(report_date):
+def std_events_from_api(report_date, window_days=2):
     global tz_local
     date_from = (dt.datetime.strptime(report_date, TOGGL_DATE_FORMAT)
-                    - dt.timedelta(days=2)
+                    - dt.timedelta(days=window_days)
     ).strftime(TOGGL_DATE_FORMAT)
 
     api_login()
@@ -268,6 +266,7 @@ def std_events_from_entries(entries, projects, clients):
 
     # 06 convert duration from seconds to hours
     std['duration_hrs'] = std['duration'] / SEC_PER_HOUR
+    std['activity'].fillna('', inplace=True)
 
     std = std[STD_FIELDS]
 
@@ -280,13 +279,8 @@ def std_events_from_entries(entries, projects, clients):
 
 
 def utc_str_to_local_datetime(utc_str, format_code):
-    if format_code == 'start':
-        datetime_format = TOGGL_TIMESTAMP_FORMAT
-    elif format_code == 'stop':
-        datetime_format = TOGGL_STOP_FORMAT
-    else:
-        raise ValueError('unrecognized format code %s' % format_code)
-
+    utc_str = utc_str.replace('Z', '+00:00')
+    datetime_format = TOGGL_TIMESTAMP_FORMAT
     utc_timestamp = dt.datetime.strptime(utc_str, datetime_format)
     tza = tz_UTC.localize(utc_timestamp)
     local_timestamp = tza.astimezone(tz_local).replace(tzinfo=None)

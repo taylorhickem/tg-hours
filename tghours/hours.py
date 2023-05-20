@@ -57,13 +57,13 @@ def gs_load():
 #-----------------------------------------------------
 
 
-def update_events(report_date=None):
+def update_events(report_date=None, window_days=None):
     '''Update events database sqlite and gsheet with new Toggl records
     '''
     global events
 
     #01 load new events
-    new_events = events_std_format(None, '', report_date)
+    new_events = events_std_format(None, '', report_date=report_date, window_days=window_days)
     has_new_events = len(new_events) > 0
 
     #02 load db events
@@ -126,23 +126,26 @@ def load_events():
     return has_events
 
 
-def events_std_format(data, filename='', report_date=None):
+def events_std_format(data, filename='', report_date=None, window_days=None):
     ''' create events from Toggl data table
     '''
     events = []
-    try:
-        #01 convert the dates and create activity label
-        if not report_date:
-            report_date = dt.datetime.today().strftime(toggl.TOGGL_DATE_FORMAT)
+    #try:
+    #01 convert the dates and create activity label
+    if not report_date:
+        report_date = dt.datetime.today().strftime(toggl.TOGGL_DATE_FORMAT)
+    if window_days:
+        std = toggl.std_events_from_api(report_date, window_days=window_days)
+    else:
         std = toggl.std_events_from_api(report_date)
-        # std = toggl.standard_form(data)  # deprecated
-        # std = nt_standardForm(data)      # deprecated, NowThen method
+    # std = toggl.standard_form(data)  # deprecated
+    # std = nt_standardForm(data)      # deprecated, NowThen method
 
-        if len(std) > 0:
-            #02 add year, month, week
-            events = TimeSeriesTable(std, dtField='timestamp').ts
+    if len(std) > 0:
+        #02 add year, month, week
+        events = TimeSeriesTable(std, dtField='timestamp').ts
 
-    except:
-        pass
+    #except:
+    #    pass
 
     return events
