@@ -24,7 +24,12 @@ def update_events(report_date, window_days=None):
     '''Update events database sqlite and gsheet with new NowThen records
     '''
     hours.load()
-    hours.update_events(report_date, window_days)
+    hours.report_update(report_date, window_days)
+
+
+def sync():
+    hours.db_sync()
+
 
 def update_activity_report():
     pass
@@ -56,8 +61,11 @@ def autorun():
                 update_events(None)
         elif process_name == 'update_activity_report':
             update_activity_report()
+        elif process_name == 'sync':
+            sync()
     else:
         print('no report specified')
+
 
 if __name__ == "__main__":
     autorun()
