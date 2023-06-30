@@ -19,7 +19,6 @@ from tghours import toggl
 SYNC_FILE = 'dbsync_config.json'
 DATE_FORMAT = '%Y-%m-%d'
 GS_WKB_NAME = 'hours'
-GS_CLIENT_SECRET_FILE = 'client_secret.json'
 DB_EVENT_TABLE = 'tgevents'
 LAST_MODIFIED_FIELD = 'last_modified'
 KEY_FIELD = 'timestamp'
@@ -40,24 +39,17 @@ events = None
 #-----------------------------------------------------
 
 
-def load():
-    db_load()
-    gs_load()
+def load(source='remote'):
+    db_load(source=source)
 
 
-def db_load():
-    db.DB_SOURCE = 'remote'
-    #db.SQL_DB_NAME = 'sqlite:///hours.db'
+def db_load(source='remove'):
+    if source == 'remote':
+        db.DB_SOURCE = 'remote'
+    elif source == 'local':
+        db.DB_SOURCE = 'local'
+        db.SQL_DB_NAME = 'sqlite:///hours.db'
     db.load_sql()
-
-
-def gs_load():
-    with open(GS_CLIENT_SECRET_FILE) as f:
-        client_secret = json.loads(f.read())
-    f.close()
-    db.gs.CLIENT_SECRET_FILE = GS_CLIENT_SECRET_FILE
-    db.load_client_secret(client_secret)
-    db.GSHEET_CONFIG = json.load(open('gsheet_config.json'))
 
 
 #-----------------------------------------------------

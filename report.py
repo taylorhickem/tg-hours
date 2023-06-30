@@ -11,6 +11,8 @@ from tghours import hours
 # -----------------------------------------------------
 # Module variables
 # -----------------------------------------------------
+DB_SOURCE = 'remote'
+API_TOKEN_PATH = 'api_token'
 # -----------------------------------------------------
 # Setup
 # -----------------------------------------------------
@@ -23,7 +25,8 @@ from tghours import hours
 def update_events(report_date, window_days=None):
     '''Update events database sqlite and gsheet with new NowThen records
     '''
-    hours.load()
+    hours.toggl.API_TOKEN_PATH = API_TOKEN_PATH
+    hours.load(source=DB_SOURCE)
     hours.report_update(report_date, window_days)
 
 
