@@ -50,6 +50,7 @@ def db_load(source='remove'):
         db.DB_SOURCE = 'local'
         db.SQL_DB_NAME = 'sqlite:///hours.db'
     db.load_sql()
+    db.load_config()
 
 
 #-----------------------------------------------------
