@@ -11,6 +11,7 @@ api = None
 
 tz_local = None
 tz_UTC = pytz.timezone('UTC')
+API_TOKEN_PATH = 'api_token'
 TOGGL_API_URL = 'https://api.track.toggl.com/api/v9'
 TOGGL_URL = 'https://track.toggl.com'
 TOGGL_ACCOUNT = '1235915'
@@ -155,7 +156,7 @@ class TogglAPI(object):
         self.login()
 
     def login(self):
-        with open('api_token') as f:
+        with open(API_TOKEN_PATH) as f:
             self.API_TOKEN = f.read()
         f.close()
 
