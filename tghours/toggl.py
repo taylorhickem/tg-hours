@@ -142,7 +142,7 @@ def split_overlap_events(events, method='api_entries'):
             raise ValueError('method: %s, is not recognized' % method)
 
         # 03 append eod events to the non_ovlp
-        non_ovlp = non_ovlp.append(eod)
+        non_ovlp = pd.concat([non_ovlp, eod])
 
     return non_ovlp
 
