@@ -31,12 +31,10 @@ def lambda_handler(event, context):
     hours.db.DB_SOURCE = 'remote'
     
     hours.db_load()
-    hours.toggl.api_login()
-
-    hours.report_update(report_date, window_days)
+    hours.report_update(report_date=report_date, window_days=window_days)
 
     status_code = 200
-    message = 'successfully logged into MySQL DB and Toggle API'
+    message = 'hours report updated.'
 
     return {
         'status_code': status_code,
