@@ -67,7 +67,7 @@ class DynamoDBTable(object):
 
     def as_dataframe(self, items: list) -> pd.DataFrame:
         df = pd.DataFrame([], columns=self.columns)
-        if items > 0:
+        if len(items) > 0:
             df = pd.DataFrame.from_records(items)
             for c in df.columns:
                 df[c] = pandas_format(self.schema[c], df[c])
