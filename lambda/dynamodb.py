@@ -1,6 +1,7 @@
 """ this module provides template classes that conform to the interface patterns
 """
 import re
+import copy
 from decimal import Decimal
 from typing import Tuple
 import datetime as dt
@@ -336,7 +337,7 @@ class DynamoDBAPI(object):
 
     def _create_tables(self):
         config = self.config['tables']
-        self.table_names = config.keys()
+        self.table_names = list(config.keys())
         for t in self.table_names:
             table_config = config[t]
             table = self._create_table(t, table_config)
@@ -426,7 +427,7 @@ def dynamodb_format(column_spec: str, column_list: list) -> list:
 
 
 def dynamodb_format_value(column_spec: str, raw):
-    formatted = raw.copy()
+    formatted = copy.copy(raw)
     data_type, format_spec = extract_parenthesis(column_spec)
     if data_type not in DIRECT_MAP:
         if data_type in DATETIME_FORMATS:
