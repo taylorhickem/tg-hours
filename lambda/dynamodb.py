@@ -9,9 +9,8 @@ import pandas as pd
 from boto3.dynamodb.conditions import Key, Attr
 import boto3
 
-
 DEFAULT_BATCH_MAX = 100
-DIRECT_MAP = ['str', 'int']
+DIRECT_MAP = ['str']
 REF_DATE = dt.datetime(1900, 1, 1)
 DATETIME_FORMATS = {
     'datetime': '%Y-%m-%d %H:%M:%S',
@@ -79,12 +78,12 @@ class DynamoDBTable(object):
             items should already be in standard format.
         """
         if len(items) > 0:
-            try:
-                with self.table.batch_writer() as batch:
-                    for item in items:
-                        batch.put_item(Item=item)
-            except Exception as e:
-                self._on_error(str(e))
+            # try:
+            with self.table.batch_writer() as batch:
+                for item in items:
+                    batch.put_item(Item=item)
+            # except Exception as e:
+            #    self._on_error(str(e))
 
     def rows_insert(self, rows: pd.DataFrame):
         """ CREATE: inserts rows as DataFrame into table
@@ -100,13 +99,13 @@ class DynamoDBTable(object):
 
     def query_by_attr_decimal_value_eq(self, column_name, decimal_value, batch_max=None):
         filter_exp = Attr(column_name).eq(decimal_value)
-        return self._query(filter_expression=filter_exp, batch_max=batch_max)
+        return self._scan(filter_expression=filter_exp, batch_max=batch_max)
 
     def query_by_key_decimal_value_eq(self, column_name, decimal_value, batch_max=None):
         key_condition = Key(column_name).eq(decimal_value)
         return self._query(key_condition=key_condition, batch_max=batch_max)
 
-    def _query(self, key_condition=None, filter_expression=None, batch_max=None) -> Tuple[list, list]:
+    def _scan(self, filter_expression, batch_max=None) -> Tuple[list, list]:
         items = []
         keys = []
         response = {}
@@ -116,32 +115,56 @@ class DynamoDBTable(object):
             batch_max = self.batch_max
         while start_key != {} and batch <= batch_max:
             if start_key == 'start':
-                if key_condition is not None and filter_expression is not None:
+                response = self.table.scan(FilterExpression=filter_expression)
+            else:
+                response = self.table.scan(FilterExpression=filter_expression, ExclusiveStartKey=start_key)
+            if 'Items' in response:
+                items = items + response['Items']
+                if 'sort_key' in self.keys:
+                    keys = keys + [{
+                        self.keys['partition_key']: i[self.keys['partition_key']],
+                        self.keys['sort_key']: i[self.keys['sort_key']]
+                    } for i in response['Items']
+                    ]
+                else:
+                    keys = keys + [{
+                        self.keys['partition_key']: i[self.keys['partition_key']]
+                    } for i in response['Items']
+                    ]
+
+            start_key = {}
+            batch = batch + 1
+            if 'LastEvaluatedKey' in response:
+                start_key = response['LastEvaluatedKey']
+        print(f'scan completed in {batch} batches out of max {batch_max}')
+        return keys, items
+
+    def _query(self, key_condition, filter_expression=None, batch_max=None) -> Tuple[list, list]:
+        items = []
+        keys = []
+        response = {}
+        start_key = 'start'
+        batch = 0
+        if batch_max is None:
+            batch_max = self.batch_max
+        while start_key != {} and batch <= batch_max:
+            if start_key == 'start':
+                if filter_expression is not None:
                     response = self.table.query(
                         KeyConditionExpression=key_condition,
                         FilterExpression=filter_expression
                     )
-                elif key_condition is not None and filter_expression is None:
-                    response = self.table.query(KeyConditionExpression=key_condition)
-                elif key_condition is None and filter_expression is not None:
-                    response = self.table.query(FilterExpression=filter_expression)
                 else:
-                    error_message = 'no query condition specified. Include argument for either KeyConditionExpression or FilterExpression'
-                    self._on_error(error_message)
+                    response = self.table.query(KeyConditionExpression=key_condition)
             else:
-                if key_condition is not None and filter_expression is not None:
+                if filter_expression is not None:
                     response = self.table.query(
                         KeyConditionExpression=key_condition,
                         FilterExpression=filter_expression,
                         ExclusiveStartKey=start_key
                     )
-                elif key_condition is not None and filter_expression is None:
-                    response = self.table.query(KeyConditionExpression=key_condition, ExclusiveStartKey=start_key)
-                elif key_condition is None and filter_expression is not None:
-                    response = self.table.query(FilterExpression=filter_expression, ExclusiveStartKey=start_key)
                 else:
-                    error_message = 'no query condition specified. Include argument for either KeyConditionExpression or FilterExpression'
-                    self._on_error(error_message)
+                    response = self.table.query(KeyConditionExpression=key_condition, ExclusiveStartKey=start_key)
             if 'Items' in response:
                 items = items + response['Items']
                 if 'sort_key' in self.keys:
@@ -294,6 +317,7 @@ class DynamoDBAPI(object):
         if success:
             self._create_tables()
             self._connected = True
+            print(f'DynamoDBAPI.connect success. tables {self.tables}')
 
     def disconnect(self):
         self._unload_tables()
@@ -337,7 +361,7 @@ class DynamoDBAPI(object):
 
     def _create_tables(self):
         config = self.config['tables']
-        self.table_names = list(config.keys())
+        self.table_names = config.keys()
         for t in self.table_names:
             table_config = config[t]
             table = self._create_table(t, table_config)
@@ -407,14 +431,20 @@ def pandas_format(column_spec: str, df_series: pd.Series) -> pd.Series:
             if data_type in DATETIME_FORMATS:
                 if format_spec == '':
                     format_spec = DATETIME_FORMATS[data_type]
-                if data_type == 'time': # -> dt.timedelta
+                if data_type == 'time':  # -> dt.time
                     formatted = formatted.apply(
-                        lambda x: dt.datetime.strptime(x, format_spec) - REF_DATE)
-                else: # -> dt.datetime
+                        lambda x: dt.datetime.strptime(x, format_spec).time())
+                elif data_type == 'date':  # -> dt.date
+                    formatted = formatted.apply(
+                        lambda x: dt.datetime.strptime(x, format_spec).date())
+                else:  # -> dt.datetime
                     formatted = formatted.apply(lambda x: dt.datetime.strptime(x, format_spec))
 
             elif data_type == 'decimal':
-                    formatted = formatted.astype(float)
+                formatted = formatted.astype(float)
+
+            elif data_type == 'int':
+                formatted = formatted.astype(int)
 
     return formatted
 
@@ -439,14 +469,14 @@ def dynamodb_format_value(column_spec: str, raw):
 
         elif data_type == 'decimal':
             if format_spec:
-                formatted = round(int(format_spec))
+                formatted = round(formatted, int(format_spec))
             formatted_str = str(formatted)
             formatted = Decimal(formatted_str)
 
     return formatted
 
 
-def extract_parenthesis(test_str:str):
+def extract_parenthesis(test_str: str):
     inner = ''
     regex_outer = r'(.*?)\((.*?)\)?'
     regex_inner = r'\(.*?\)'

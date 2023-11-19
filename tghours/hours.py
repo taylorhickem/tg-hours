@@ -52,7 +52,6 @@ def db_load(source='remove'):
     db.load_sql()
     db.load_config()
 
-
 #-----------------------------------------------------
 # Procedures
 #-----------------------------------------------------
@@ -164,6 +163,14 @@ def report_post():
     gs_date_format = db.GSHEET_CONFIG[GS_WKB_NAME]['sheets'][rngcode]['date_format']
     time_format = db.GSHEET_CONFIG[GS_WKB_NAME]['sheets'][rngcode]['time_format']
 
+    def event_date_convert(date_value):
+        if isinstance(date_value, str):
+            dt_date = dt.datetime.strptime(date_value, DATE_FORMAT)
+        elif isinstance(date_value, dt.date) or isinstance(date_value, dt.datetime):
+            dt_date = date_value
+        formatted = dt_date.strftime(gs_date_format)
+        return formatted
+
     def event_time_convert(time_value):
         time_str = ''
         if isinstance(time_value, str):
@@ -173,8 +180,7 @@ def report_post():
         return time_str
 
     db_events = db_query()
-    db_events['date'] = db_events['date'].apply(lambda x: dt.datetime.strptime(x, DATE_FORMAT))
-    db_events['date'] = db_events['date'].apply(lambda x: dt.datetime.strftime(x, gs_date_format))
+    db_events['date'] = db_events['date'].apply(lambda x: event_date_convert(x))
     db_events['time'] = db_events['time'].apply(lambda x: event_time_convert(x))
 
     # 06.02 fill empty str for blank comment fields
