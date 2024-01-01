@@ -166,15 +166,56 @@ class TogglAPI(object):
 
     def get(self, route):
         content = {}
-        status_code = 400
         try:
             response = self.session.get(TOGGL_API_URL + route)
             status_code = response.status_code
             if status_code == 200:
                 content = json.loads(response.content.decode('utf-8'))
-        except:
-            print('something went wrong...')
+        except Exception as e:
+            status_code = 500
+            content = f'TOGGL API get ERROR for {route}. {str(e)}'
         return content, status_code
+
+    def delete(self, route):
+        message = 'DELETE success.'
+        try:
+            response = self.session.delete(TOGGL_API_URL + route)
+            status_code = response.status_code
+        except Exception as e:
+            status_code = 500
+            message = f'TOGGL API delete ERROR for {route}. {str(e)}'
+        return message, status_code
+
+    def delete_time_entries(self, start_date, end_date):
+        message = f'ERROR. time entries not deleted from {start_date} to {end_date}'
+        entries, status_code = self.time_entries(start_date, end_date)
+        if status_code == 200:
+            if len(entries) > 0:
+                ids = [e['id'] for e in entries]
+                message, status_code = self._delete_time_entries_by_ids(ids)
+                if status_code == 200:
+                    message = f'SUCCESS. {len(entries)} time entries deleted from {start_date} to {end_date}'
+            else:
+                message = f'WARNING. no time entries found from {start_date} to {end_date}'
+        return message, status_code
+
+    def _delete_time_entry_by_id(self, time_entry_id):
+        route_generic = 'workspaces/{workspace_id}/time_entries/{time_entry_id}'
+        route = route_generic.format(
+            workspace_id=self.auth['default_workspace_id'],
+            time_entry_ids=time_entry_id,
+        )
+        message, status_code = self.delete(route)
+        return message, status_code
+
+    def _delete_time_entries_by_ids(self, time_entry_ids):
+        route_generic = 'workspaces/{workspace_id}/time_entries/{time_entry_ids}'
+        route = route_generic.format(
+            workspace_id=self.auth['default_workspace_id'],
+            time_entry_ids=time_entry_ids,
+        )
+        message, status_code = self.delete(route)
+        return message, status_code
 
     def time_entries(self, start_date, end_date):
         route_generic = '/me/time_entries?start_date={start_date}&end_date={end_date}'

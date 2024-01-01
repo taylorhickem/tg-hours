@@ -6,9 +6,9 @@ deletes events from specified date range start and end
 
 ### request arguments
 
-START_DATE: query start date YYYY-DD-MM
+DATE_START: query start date YYYY-DD-MM
 
-END_DATE: query end date YYYY-DD-MM
+DATE_END: query end date YYYY-DD-MM
 
 ### response
 acknowledgement success or failure with error messages
@@ -18,9 +18,9 @@ fetches Toggl events from start to end date converted to standard format as a li
 
 ### request arguments
 
-START_DATE: query start date YYYY-DD-MM
+DATE_START: query start date YYYY-DD-MM
 
-END_DATE: query end date YYYY-DD-MM
+DATE_END: query end date YYYY-DD-MM
 
 ### response
 
@@ -29,8 +29,8 @@ fetches Toggl events from API as-is
 
 ### request arguments
 
-START_DATE: query start date YYYY-DD-MM
+DATE_START: query start date YYYY-DD-MM
 
-END_DATE: query end date YYYY-DD-MM
+DATE_END: query end date YYYY-DD-MM
 
 ### response
