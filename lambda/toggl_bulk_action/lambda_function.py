@@ -11,6 +11,7 @@ ENV_VARIABLES = [
     'DATE_END'
 ]
 DATE_START = ''
+DATE_END = ''
 DATE_FORMAT = hours.toggl.TOGGL_DATE_FORMAT
 ACTION_TYPE = 'events_get'
 WINDOW_DAYS = 2
@@ -46,6 +47,8 @@ def lambda_handler(event, context):
     if ACTION_TYPE == 'events_get':
         status_code, message, data = events_get(DATE_START, DATE_END)
         response_body['data'] = data
+    elif ACTION_TYPE == 'events_delete':
+        status_code, message = events_delete(DATE_START, DATE_END)
     else:
         status_code = 200
         message = 'no action type defined'
@@ -91,3 +94,23 @@ def events_get(date_start, date_end):
         message = message + f'\n {str(e)}'
 
     return status_code, message, data
+
+
+def events_delete(date_start, date_end):
+    status_code = 500
+    data = None
+    message = f'API ERROR. failed to fetch events start {date_start} to end {date_end} from Toggl API.'
+
+    api_load()
+
+    try:
+        hours.toggl.api_login()
+        hours.toggl.tz_local = hours.toggl.pytz.timezone(
+            hours.toggl.api.auth['timezone']
+        )
+        message, status_code = hours.toggl.api.delete_time_entries(date_start, date_end)
+        hours.toggl.api_logout()
+    except Exception as e:
+        message = message + f'\n {str(e)}'
+
+    return status_code, message
