@@ -84,9 +84,13 @@ def events_get(date_start, date_end):
         hours.toggl.tz_local = hours.toggl.pytz.timezone(
             hours.toggl.api.auth['timezone']
         )
-        data = hours.toggl.api.time_entries(date_start, date_end)
-        status_code = 200
-        message = f'success. fetch events start {date_start} to end {date_end} from Toggl API. '
+        search_args = {
+            'start_date': date_start,
+            'end_date': date_end
+        }
+        data, status_code = hours.toggl.api.time_entries_search(args=search_args)
+        if status_code == 200:
+            message = f'success. fetched {len(data)} events start {date_start} to end {date_end} from Toggl API. '
 
         hours.toggl.api_logout()
     except Exception as e:
@@ -99,7 +103,7 @@ def events_get(date_start, date_end):
 def events_delete(date_start, date_end):
     status_code = 500
     data = None
-    message = f'API ERROR. failed to fetch events start {date_start} to end {date_end} from Toggl API.'
+    message = f'API ERROR. failed to delete events from start {date_start} to end {date_end} from Toggl API.'
 
     api_load()
 

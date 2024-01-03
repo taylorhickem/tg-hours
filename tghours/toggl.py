@@ -12,6 +12,7 @@ api = None
 tz_local = None
 tz_UTC = pytz.timezone('UTC')
 API_TOKEN_PATH = 'api_token'
+TOGGL_REPORTS_API_URL = 'https://api.track.toggl.com/reports/api/v3'
 TOGGL_API_URL = 'https://api.track.toggl.com/api/v9'
 TOGGL_URL = 'https://track.toggl.com'
 TOGGL_ACCOUNT = '1235915'
@@ -164,58 +165,102 @@ class TogglAPI(object):
         self.session.auth = (self.API_TOKEN, 'api_token')
         self.auth, status_code = self.get('/me')
 
-    def get(self, route):
-        content = {}
+    def report_post(self, route, body={}):
+        endpoint = TOGGL_REPORTS_API_URL + route
         try:
-            response = self.session.get(TOGGL_API_URL + route)
+            response = self.session.post(endpoint, json=body)
             status_code = response.status_code
             if status_code == 200:
                 content = json.loads(response.content.decode('utf-8'))
+            else:
+                content = f'TOGGL API post ERROR for {endpoint}. {response.text}'
         except Exception as e:
             status_code = 500
-            content = f'TOGGL API get ERROR for {route}. {str(e)}'
+            content = f'TOGGL API get ERROR for {endpoint}. {str(e)}'
+        return content, status_code
+
+    def get(self, route):
+        endpoint = TOGGL_API_URL + route
+        try:
+            response = self.session.get(endpoint)
+            status_code = response.status_code
+            if status_code == 200:
+                content = json.loads(response.content.decode('utf-8'))
+            else:
+                content = f'TOGGL API get ERROR for {endpoint}. {response.text}'
+        except Exception as e:
+            status_code = 500
+            content = f'TOGGL API get ERROR for {endpoint}. {str(e)}'
         return content, status_code
 
     def delete(self, route):
         message = 'DELETE success.'
+        endpoint = TOGGL_API_URL + route
         try:
-            response = self.session.delete(TOGGL_API_URL + route)
+            response = self.session.delete(endpoint)
             status_code = response.status_code
+            if status_code != 200:
+                message = f'TOGGL API delete ERROR for {endpoint}. {response.text}'
         except Exception as e:
             status_code = 500
-            message = f'TOGGL API delete ERROR for {route}. {str(e)}'
+            message = f'TOGGL API delete ERROR for {endpoint}. {str(e)}'
         return message, status_code
 
     def delete_time_entries(self, start_date, end_date):
         message = f'ERROR. time entries not deleted from {start_date} to {end_date}'
-        entries, status_code = self.time_entries(start_date, end_date)
+        search_args = {
+            'start_date': start_date,
+            'end_date': end_date
+        }
+        content, status_code = self.time_entries_search(args=search_args)
+        entries_count = len(content)
         if status_code == 200:
-            if len(entries) > 0:
-                ids = [e['id'] for e in entries]
+            if entries_count > 0:
+                ids = [e['time_entries'][0]['id'] for e in content]
                 message, status_code = self._delete_time_entries_by_ids(ids)
                 if status_code == 200:
-                    message = f'SUCCESS. {len(entries)} time entries deleted from {start_date} to {end_date}'
+                    message = f'SUCCESS. {entries_count} time entries deleted from {start_date} to {end_date}'
             else:
                 message = f'WARNING. no time entries found from {start_date} to {end_date}'
+        else:
+            message = f'{message}. {content}'
         return message, status_code
 
     def _delete_time_entry_by_id(self, time_entry_id):
-        route_generic = 'workspaces/{workspace_id}/time_entries/{time_entry_id}'
+        route_generic = '/workspaces/{workspace_id}/time_entries/{time_entry_id}'
         route = route_generic.format(
             workspace_id=self.auth['default_workspace_id'],
-            time_entry_ids=time_entry_id,
+            time_entry_id=time_entry_id,
         )
         message, status_code = self.delete(route)
         return message, status_code
 
     def _delete_time_entries_by_ids(self, time_entry_ids):
-        route_generic = 'workspaces/{workspace_id}/time_entries/{time_entry_ids}'
-        route = route_generic.format(
-            workspace_id=self.auth['default_workspace_id'],
-            time_entry_ids=time_entry_ids,
-        )
-        message, status_code = self.delete(route)
+        failed_cases = []
+        for id in time_entry_ids:
+            message, status_code = self._delete_time_entry_by_id(id)
+            if status_code != 200:
+                failed_case = {
+                    'id': id,
+                    'status_code': status_code,
+                    'message': message
+                }
+                failed_cases.append(failed_case)
+        failed_count = len(failed_cases)
+        ids_count = len(time_entry_ids)
+        if failed_count > 0:
+            case_details = json.dumps(failed_cases)
+            message = f'TOGGL TRACK API ERROR. DELETE failed for {failed_count} of {ids_count} time entries.'
+            message = message + f' details {case_details}'
         return message, status_code
+
+    def time_entries_search(self, args={}):
+        route_generic = '/workspace/{workspace_id}/search/time_entries'
+        route = route_generic.format(
+            workspace_id=self.auth['default_workspace_id']
+        )
+        entries, status_code = self.report_post(route, body=args)
+        return entries, status_code
 
     def time_entries(self, start_date, end_date):
         route_generic = '/me/time_entries?start_date={start_date}&end_date={end_date}'
