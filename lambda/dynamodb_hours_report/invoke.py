@@ -8,7 +8,7 @@ USER_DATA_DIR = '/opt'
 API_TOKEN_PATH = USER_DATA_DIR + '/api_token'
 db = None
 
-ACTION_TYPE = 'report_update'
+ACTION_TYPE = 'dynamodb_hours_report'
 WINDOW_DAYS = None
 REPORT_DATE = None
 USER_DATA = {}
@@ -31,7 +31,7 @@ def lambda_handler(event, context):
 
     print(f'ACTION_TYPE:{ACTION_TYPE}')
 
-    if ACTION_TYPE == 'report_update':
+    if ACTION_TYPE == 'dynamodb_hours_report':
         status_code, message = report_update()
     elif ACTION_TYPE == 'delete_recent':
         status_code, message = delete_recent(cutoff_date)
