@@ -5,6 +5,7 @@ import math
 import pandas as pd
 import datetime as dt
 import requests
+import urllib
 import pytz
 
 api = None
@@ -206,6 +207,25 @@ class TogglAPI(object):
             message = f'TOGGL API delete ERROR for {endpoint}. {str(e)}'
         return message, status_code
 
+    def patch(self, route, ids=[], operations=[]):
+        message = 'PATCH success.'
+        endpoint = TOGGL_API_URL + route + '/' + ','.join([str(id) for id in ids])
+        body = json.dumps({'array': operations})
+        if ids:
+            try:
+                response = self.session.patch(endpoint, json=body)
+                status_code = response.status_code
+                if status_code != 200:
+                    message = f'TOGGL API patch ERROR for {endpoint} and body {body}. {response.text}'
+            except Exception as e:
+                status_code = 500
+                message = f'TOGGL API patch ERROR for {endpoint} and body {body}. {str(e)}'
+        else:
+            status_code = 400
+            message = f'USER INPUT ERROR. empty list of ids for {endpoint}'
+
+        return message, status_code
+
     def delete_time_entries(self, start_date, end_date):
         message = f'ERROR. time entries not deleted from {start_date} to {end_date}'
         search_args = {
@@ -283,6 +303,46 @@ class TogglAPI(object):
         )
         client, status_code = self.get(route)
         return client
+
+    def projects_patch(self, patches=[]):
+        route_generic = '/workspaces/{workspace_id}/projects'
+        route = route_generic.format(
+            workspace_id=self.auth['default_workspace_id']
+        )
+        names = [p['project_name'] for p in patches]
+        operations = [p['operation'] for p in patches]
+        ids = self._project_ids_from_names(names)
+        message, status_code = self.patch(route, ids=ids, operations=operations)
+        return message, status_code
+
+    def projects_rename(self, names={}):
+        rename_operation = {
+            'op': 'replace',
+            'path': '%2Fname',
+            'value': ''
+        }
+        patches = [
+            {
+                'project_name': name,
+                'operation': rename_operation.copy()
+            } for name in names
+        ]
+        for p in patches:
+            p['operation']['value'] = names[p['project_name']]
+        message, status_code = self.projects_patch(patches=patches)
+        return message, status_code
+
+    def _project_ids_from_names(self, names=[]):
+        project_ids = []
+        projects = self.workspace_projects()
+        for name in names:
+            pid = None
+            for p in projects:
+                if p['name'] == name:
+                    pid = p['id']
+                    break
+            project_ids.append(pid)
+        return project_ids
 
 
 def api_login():
@@ -412,3 +472,4 @@ def eod_from_ovlp_ts_method(events):
 
     eod = pd.concat([d0, d1], axis=0)
     return eod
+

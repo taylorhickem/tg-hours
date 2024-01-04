@@ -42,6 +42,24 @@ DATE_END: query end date YYYY-DD-MM
 }
 ```
 
+## projects_rename
+rename a list of projects
+
+### request arguments
+
+ACTION_TYPE: "projects_rename"
+
+PROJECT_NAMES: {} dictionary each entry old_name: new_name
+
+### response
+```
+{
+    "status_code": HTML status code,
+    "message": summary message success or failure,
+    "request": {...} JSON copy of the user request
+}
+```
+
 ## (FUTURE) std_events_get
 fetches Toggl events from start to end date converted to standard format as a list of dictionaries
 

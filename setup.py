@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tg-hours',
-    version='1.3.0',
+    version='1.4.1',
     packages=find_packages(),
     url='https://github.com/taylorhickem/nt-hours',
     description='add-on utility for time tracking report using Toggl Track time tracker app',

@@ -118,3 +118,26 @@ def events_delete(date_start, date_end):
         message = message + f'\n {str(e)}'
 
     return status_code, message
+
+
+def projects_rename(labels={}):
+    status_code = 500
+    message = f'API ERROR. failed to rename projects from Toggl API. projects: {labels}'
+
+    if labels:
+        api_load()
+
+        try:
+            hours.toggl.api_login()
+            hours.toggl.tz_local = hours.toggl.pytz.timezone(
+                hours.toggl.api.auth['timezone']
+            )
+            message, status_code = hours.toggl.api.projects_rename(names=labels)
+            hours.toggl.api_logout()
+        except Exception as e:
+            message = message + f'\n {str(e)}'
+    else:
+        status_code = 400
+        message = 'USER INPUT ERROR. empty project list'
+
+    return status_code, message
