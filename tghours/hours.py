@@ -4,6 +4,7 @@
 # Import
 #-----------------------------------------------------
 import json
+import logging
 import pandas as pd
 import datetime as dt
 from sqlgsheet import database as db
@@ -16,6 +17,7 @@ from tghours import toggl
 
 
 #constants
+LOGGING_LEVEL = 'INFO'
 SYNC_FILE = 'dbsync_config.json'
 DATE_FORMAT = '%Y-%m-%d'
 GS_WKB_NAME = 'hours'
@@ -35,6 +37,20 @@ events = None
 
 
 #-----------------------------------------------------
+# Logging setup
+#-----------------------------------------------------
+
+logger = logging.getLogger(__name__)
+logger.setLevel(LOGGING_LEVEL)
+toggl.LOGGING_LEVEL = LOGGING_LEVEL
+
+
+def set_log_level(level):
+    logger.setLevel(level)
+    toggl.logger.setLevel(level)
+
+
+#-----------------------------------------------------
 # Setup
 #-----------------------------------------------------
 
@@ -43,7 +59,7 @@ def load(source='remote'):
     db_load(source=source)
 
 
-def db_load(source='remove'):
+def db_load(source='remote'):
     if source == 'remote':
         db.DB_SOURCE = 'remote'
     elif source == 'local':
@@ -81,10 +97,15 @@ def events_std_format(data, filename='', report_date=None, window_days=None):
 
         if len(std) > 0:
             #02 add year, month, week
+            logger.debug('adding year, month, week to events ...')
             events = TimeSeriesTable(std, dtField=KEY_FIELD).ts
+        else:
+            logger.debug('no events found for report_date %s, window_days %s', report_date, window_days)
 
-    except:
-        pass
+    except Exception:
+        logger.exception('failed to build events for report_date %s, window_days %s',
+                         report_date, window_days)
+        raise
 
     return events
 

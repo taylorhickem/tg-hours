@@ -1,6 +1,7 @@
 """this module integrates toggl track events https://github.com/toggl/toggl_api_docs/
 """
 import json
+import logging
 import math
 import pandas as pd
 import datetime as dt
@@ -11,6 +12,7 @@ api = None
 
 tz_local = None
 tz_UTC = pytz.timezone('UTC')
+LOGGING_LEVEL = 'INFO'
 API_TOKEN_PATH = 'api_token'
 TOGGL_REPORTS_API_URL = 'https://api.track.toggl.com/reports/api/v3'
 TOGGL_API_URL = 'https://api.track.toggl.com/api/v9'
@@ -34,6 +36,10 @@ STD_FIELDS = [
     'activity',
     'comment'
 ]
+
+logger = logging.getLogger(__name__)
+logger.setLevel(LOGGING_LEVEL)
+
 
 def standard_form(data):
     """ converts toggl records from csv to the standard events format
@@ -299,22 +305,37 @@ def api_logout():
 
 def std_events_from_api(report_date, window_days=2):
     global tz_local
-    date_from = (dt.datetime.strptime(report_date, TOGGL_DATE_FORMAT)
-                    - dt.timedelta(days=window_days)
-    ).strftime(TOGGL_DATE_FORMAT)
 
     api_login()
 
-    tz_local = pytz.timezone(api.auth['timezone'])
-    entries = api.time_entries(date_from, report_date)
-    projects = api.workspace_projects()
-    clients = api.workspace_clients()
-    events = std_events_from_entries(entries, projects, clients)
+    try:
+        tz_local = pytz.timezone(api.auth['timezone'])
+        date_from = (dt.datetime.strptime(report_date, TOGGL_DATE_FORMAT)
+                        - dt.timedelta(days=window_days)
+        ).strftime(TOGGL_DATE_FORMAT)
+        
+        logger.debug('start date: %s (report_date %s, window_days %s)',
+                     date_from, report_date, window_days)
 
-    api_logout()
+        entries = api.time_entries(date_from, report_date)
+        projects = api.workspace_projects()
+        clients = api.workspace_clients()
 
-    return events
+        logger.debug('fetched %s entries, %s projects, %s clients',
+                     len(entries), len(projects), len(clients))
+        
+        events = std_events_from_entries(entries, projects, clients)
+        logger.debug('processed %s standard events', len(events))
+        api_logout()
+        return events
 
+    except Exception:
+        logger.exception('failed to build events for report_date %s, window_days %s',
+                         report_date, window_days)
+        raise
+
+    finally:
+        api_logout()
 
 def std_events_from_entries(entries, projects, clients):
     std = pd.DataFrame.from_records(entries)
